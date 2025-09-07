@@ -16,6 +16,26 @@
 		}
 	}
 </style>
+<div
+	id="nocopy-mini"
+	style="
+		position: fixed;
+		top: 12px;
+		right: 12px;
+		z-index: 2147483647;
+		font: 14px system-ui, sans-serif;
+		background: #fff;
+		border: 1px solid #ddd;
+		border-radius: 8px;
+		padding: 6px 8px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+	"
+>
+	<span id="nocopy-label">Copy protection enabled</span>
+	<button id="nocopy-btn" style="margin-left: 8px; cursor: pointer">
+		Disable
+	</button>
+</div>
 <script>
 	;(() => {
 		const cfg = { salt_b64: '__SALT__', hash_b64: '__HASH__', iter: __ITER__ }
@@ -44,14 +64,48 @@
 			return eq(new Uint8Array(bits), b64(cfg.hash_b64))
 		}
 
-		// ctrl/cmd + U
+		async function unlock() {
+			const label = document.getElementById('nocopy-label')
+			const btn = document.getElementById('nocopy-btn')
+			const box = document.getElementById('nocopy-mini')
+
+			const pwd = prompt('Enter password:')
+			if (pwd == null) return
+			if (await ok(pwd)) {
+				document.getElementById('nocopy-style')?.remove()
+				box.style.background = '#d4f8d4'
+				label.textContent = 'Copy protection disabled until page reload'
+				btn.remove()
+			} else {
+				box.style.background = '#ffd6d6'
+				label.textContent = 'Wrong password ✗'
+			}
+		}
+
+		document.addEventListener(
+			'click',
+			e => {
+				if (e.target && e.target.id === 'nocopy-btn') unlock()
+			},
+			{ capture: true }
+		)
+
 		document.addEventListener(
 			'keydown',
 			async e => {
 				if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'u') {
-					const pwd = prompt('Password:')
+					const pwd = prompt('Enter password:')
 					if (pwd != null && (await ok(pwd))) {
 						document.getElementById('nocopy-style')?.remove()
+						const box = document.getElementById('nocopy-mini')
+						box.style.background = '#d4f8d4'
+						document.getElementById('nocopy-label').textContent =
+							'Copy protection disabled until page reload'
+						document.getElementById('nocopy-btn')?.remove()
+					} else {
+						document.getElementById('nocopy-mini').style.background = '#ffd6d6'
+						document.getElementById('nocopy-label').textContent =
+							'Wrong password ✗'
 					}
 				}
 			},
