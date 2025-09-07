@@ -1,4 +1,4 @@
-import argparse, base64, hashlib, re, secrets, sys
+import argparse, base64, hashlib, hmac, re, secrets, sys
 
 TPL_PATH = "nocopy_template.html"
 BEGIN = "<!-- nocopy-protect start -->"
@@ -128,7 +128,7 @@ def verify_password(html: str, password: str) -> bool:
     except Exception:
         return False
 
-    return hashlib.compare_digest(calc_digest, stored_digest)
+    return hmac.compare_digest(calc_digest, stored_digest)
 
 def remove(html: str) -> str:
     """
@@ -140,7 +140,8 @@ def remove(html: str) -> str:
     Returns:
         str: HTML without the protection block.
     """
-    return re.sub(re.escape(BEGIN) + r".*?" + re.escape(END), "", html, flags=re.S)
+    pattern = rf'\r?\n?{re.escape(BEGIN)}.*?{re.escape(END)}\r?\n?'
+    return re.sub(pattern, "", html, flags=re.S)
 
 def process_file(path: str, mode: str, password: str | None) -> int:
     """
