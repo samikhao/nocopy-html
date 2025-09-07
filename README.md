@@ -9,6 +9,9 @@ By default, text selection and copying are disabled. Copy protection can only be
 - The protection status is clearly indicated through a floating menu in the top-right corner of the page.
 
 ## Usage
+```bash
+git clone https://github.com/samikhao/nocopy-html.git
+```
 
 ```bash
 python main.py [command] [-p PASSWORD | --password PASSWORD] [path-to-html]
