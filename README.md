@@ -8,13 +8,15 @@ By default, text selection and copying are disabled. Copy protection can only be
 - Passwords are verified on the client side using **PBKDF2 with SHA-256**.
 - The protection status is clearly indicated through a floating menu in the top-right corner of the page.
 
-## Usage
+## Install
 ```bash
-git clone https://github.com/samikhao/nocopy-html.git
+git clone https://github.com/samikhao/nocopy-html
+cd nocopy-html
 ```
 
+## Usage
 ```bash
-python main.py [command] [-p PASSWORD | --password PASSWORD] [path-to-html]
+python3 main.py [command] [-p PASSWORD | --password PASSWORD] [path-to-html]
 ```
 
 ## Commands
@@ -26,15 +28,15 @@ python main.py [command] [-p PASSWORD | --password PASSWORD] [path-to-html]
 ## Examples
 
 ```bash
-python main.py enable index.html -p mysecret
+python3 main.py enable index.html -p mysecret
 ```
 
 ```bash
-python main.py disable index.html -p mysecret
+python3 main.py disable index.html -p mysecret
 ```
 
 ```bash
-python main.py status index.html
+python3 main.py status index.html
 ```
 
 ## Files
