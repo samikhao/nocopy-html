@@ -80,13 +80,28 @@ def extract_block(html: str):
     """
     return re.search(re.escape(BEGIN) + r"(.*?)" + re.escape(END), html, flags=re.S)
 
-def parse_params():
+def parse_params(guard_block):
     """
     Parse params from the injected block.
 
+    Args:
+        guard_block (str): HTML protection block (between BEGIN and END).
+
     Returns:
+        tuple[bytes, bytes, int] | None
     """
-    pass
+    s_match = re.search(r'salt_b64:\s*[\'"]([^\'"]+)[\'"]', guard_block)
+    h_match = re.search(r'hash_b64:\s*[\'"]([^\'"]+)[\'"]', guard_block)
+    i_match = re.search(r'iter:\s*(\d+)', guard_block)
+    if not (s_match and h_match and i_match):
+        return None
+    try:
+        salt = base64.b64decode(s_match.group(1))
+        digest = base64.b64decode(h_match.group(1))
+        iterations = int(i_match.group(1))
+    except Exception:
+        return None
+    return (salt, digest, iterations)
 
 def verify_password(html: str, password: str) -> bool:
     """
@@ -99,7 +114,21 @@ def verify_password(html: str, password: str) -> bool:
     Returns:
         bool: True if password is correct, False otherwise.
     """
-    pass
+    m = extract_block(html)
+    if not m:
+        return False
+
+    params = parse_params(m.group(0))
+    if params is None:
+        return False
+    salt, stored_digest, iterations = params
+
+    try:
+        calc_digest = derive(password, salt, iterations)
+    except Exception:
+        return False
+
+    return hashlib.compare_digest(calc_digest, stored_digest)
 
 def remove(html: str) -> str:
     """
@@ -133,10 +162,13 @@ def process_file(path: str, mode: str, password: str | None) -> int:
         return 0
 
     if mode == "enable":
+        if password is None:
+            print(f"[{path}] password required to enable (--password or -p)", file=sys.stderr)
+            return 2
         if already_protected(html):
             print(f"[enable] {path}: already protected (no changes)")
             return 0
-        new_html = inject(html, password or "")
+        new_html = inject(html, password)
         with open(path, "w", encoding="utf-8") as f:
             f.write(new_html)
         print(f"[enable] {path}: protection injected")
@@ -147,6 +179,9 @@ def process_file(path: str, mode: str, password: str | None) -> int:
             print(f"[disable] {path}: no protection block found (no changes)")
             return 0
         new_html = remove(html)
+        if password is None or not verify_password(html, password):
+            print(f"[{path}] wrong password", file=sys.stderr)
+            return 3
         with open(path, "w", encoding="utf-8") as f:
             f.write(new_html)
         print(f"[disable] {path}: protection removed")
