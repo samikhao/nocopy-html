@@ -40,6 +40,11 @@ python main.py status index.html
 - `nocopy_template.html` - HTML/JS template injected into target documents
 - `index.html` - example page for quick testing
 
+## Limitations
+- This tool works only with **local HTML files** that you can edit.  
+- It cannot be applied directly to existing websites you do not control (e.g. pages already opened in a browser).  
+- Protection is meant as a **basic deterrent**: advanced users can still bypass it via DevTools or by viewing the page source.
+
 ## License
 
 This project is published for non-commercial, educational use only.
