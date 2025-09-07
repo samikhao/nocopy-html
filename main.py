@@ -1,4 +1,4 @@
-import argparse, re, sys
+import argparse, base64, hashlib, re, secrets, sys
 
 TPL_PATH = "nocopy_template.html"
 BEGIN = "<!-- nocopy-protect start -->"
@@ -11,17 +11,21 @@ def load_template() -> str:
     Returns:
         str: The template contents with placeholders (__SALT__, __HASH__, __ITER__).
     """
-    with open(TPL_PATH, 'r', encoding='utf-8') as f:
-        return f.read()
+    try:
+        with open(TPL_PATH, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        print(f"[error] file not found {TPL_PATH}", file=sys.stderr)
+        sys.exit()
 
-def derive() -> bytes:
+def derive(password: str, salt: bytes, iterations: int = 120000) -> bytes:
     """
     Derive a hash from the given password.
 
     Returns:
         bytes: 32-byte derived key.
     """
-    pass
+    return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
 
 def already_protected(html: str) -> bool:
     """
@@ -48,7 +52,16 @@ def inject(html: str, password: str) -> str:
     """
     if already_protected(html):
         return html
-    block = load_template()
+    salt = secrets.token_bytes(16)
+    iterations = 120000
+    digest = derive(password, salt, iterations)
+    
+    tpl = load_template()
+    block = (tpl
+             .replace("__SALT__", base64.b64encode(salt).decode())
+             .replace("__HASH__", base64.b64encode(digest).decode())
+             .replace("__ITER__", str(iterations)))
+    
     # insert after <head>
     if re.search(r"<head[^>]*>", html, flags=re.IGNORECASE):
         return re.sub(r"(<head[^>]*>)", r"\1\n" + block, html, count=1, flags=re.IGNORECASE)
@@ -65,7 +78,7 @@ def extract_block(html: str):
     Returns:
         re.Match | None: Regex match object if block is found, otherwise None.
     """
-    pass
+    return re.search(re.escape(BEGIN) + r"(.*?)" + re.escape(END), html, flags=re.S)
 
 def parse_params():
     """
@@ -98,7 +111,7 @@ def remove(html: str) -> str:
     Returns:
         str: HTML without the protection block.
     """
-    pass
+    return re.sub(re.escape(BEGIN) + r".*?" + re.escape(END), "", html, flags=re.S)
 
 def process_file(path: str, mode: str, password: str | None) -> int:
     """
@@ -145,10 +158,11 @@ def process_file(path: str, mode: str, password: str | None) -> int:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=["enable", "disable", "status"])
-    parser.add_argument("file")
+    parser.add_argument("path")
+    parser.add_argument("--password", "-p")
     args = parser.parse_args()
 
-    exit_code = process_file(args.file, args.mode, None)
+    exit_code = process_file(args.path, args.mode, args.password)
     sys.exit(exit_code)
 
 if __name__ == "__main__":

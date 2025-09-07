@@ -7,6 +7,7 @@
 		user-select: none !important; /* standard */
 	}
 	@media print {
+		/* styles for printer */
 		* {
 			-webkit-user-select: text !important;
 			-moz-user-select: text !important;
@@ -15,4 +16,48 @@
 		}
 	}
 </style>
+
+<script>
+	;(() => {
+		const cfg = { salt_b64: '__SALT__', hash_b64: '__HASH__', iter: __ITER__ }
+		const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0))
+		const eq = (a, b) => a.length === b.length && a.every((v, i) => v === b[i])
+		const te = new TextEncoder()
+
+		async function ok(pwd) {
+			const key = await crypto.subtle.importKey(
+				'raw',
+				te.encode(pwd),
+				'PBKDF2',
+				false,
+				['deriveBits']
+			)
+			const bits = await crypto.subtle.deriveBits(
+				{
+					name: 'PBKDF2',
+					hash: 'SHA-256',
+					salt: b64(cfg.salt_b64),
+					iterations: cfg.iter,
+				},
+				key,
+				256
+			)
+			return eq(new Uint8Array(bits), b64(cfg.hash_b64))
+		}
+
+		// ctrl/cmd + U
+		document.addEventListener(
+			'keydown',
+			async e => {
+				if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'u') {
+					const pwd = prompt('Password:')
+					if (pwd != null && (await ok(pwd))) {
+						document.getElementById('nocopy-style')?.remove()
+					}
+				}
+			},
+			{ capture: true }
+		)
+	})()
+</script>
 <!-- nocopy-protect end -->
