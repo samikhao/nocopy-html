@@ -1,0 +1,15 @@
+*.txt
+
+.DS_Store
+Thumbs.db
+
+*.swp
+*.swo
+*.tmp
+*.bak
+.idea/
+.vscode/
+
+__pycache__/
+*.pyc
+*.pyo
