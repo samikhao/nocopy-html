@@ -89,28 +89,6 @@
 			},
 			{ capture: true }
 		)
-
-		document.addEventListener(
-			'keydown',
-			async e => {
-				if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'u') {
-					const pwd = prompt('Enter password:')
-					if (pwd != null && (await ok(pwd))) {
-						document.getElementById('nocopy-style')?.remove()
-						const box = document.getElementById('nocopy-mini')
-						box.style.background = '#d4f8d4'
-						document.getElementById('nocopy-label').textContent =
-							'Copy protection disabled until page reload'
-						document.getElementById('nocopy-btn')?.remove()
-					} else {
-						document.getElementById('nocopy-mini').style.background = '#ffd6d6'
-						document.getElementById('nocopy-label').textContent =
-							'Wrong password ✗'
-					}
-				}
-			},
-			{ capture: true }
-		)
 	})()
 </script>
 <!-- nocopy-protect end -->
