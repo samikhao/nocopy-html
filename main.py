@@ -4,6 +4,20 @@ TPL_PATH = "nocopy_template.html"
 BEGIN = "<!-- nocopy-protect start -->"
 END   = "<!-- nocopy-protect end -->"
 
+def err(action: str, path: str, msg: str) -> None:
+    """
+    Print a standardized error message to stderr.
+
+    Args:
+        action (str): Context/action.
+        path   (str): Related file path or identifier.
+        msg    (str): Human-readable error details.
+
+    Returns:
+        None
+    """
+    print(f"[error] {action} {path}: {msg}", file=sys.stderr)
+
 def load_template() -> str:
     """
     Load the HTML protection template from TPL_PATH.
@@ -15,8 +29,8 @@ def load_template() -> str:
         with open(TPL_PATH, 'r', encoding='utf-8') as f:
             return f.read()
     except FileNotFoundError:
-        print(f"[error] file not found {TPL_PATH}", file=sys.stderr)
-        sys.exit()
+        err("template", TPL_PATH, "file not found")
+        sys.exit(1)
 
 def derive(password: str, salt: bytes, iterations: int = 120000) -> bytes:
     """
@@ -155,8 +169,12 @@ def process_file(path: str, mode: str, password: str | None) -> int:
     Returns:
         int: Exit code (0 = success).
     """
-    with open(path, "r", encoding="utf-8", errors="ignore") as f:
-        html = f.read()
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            html = f.read()
+    except OSError as e:
+        err("read", path, str(e))
+        return 1
 
     if mode == "status":
         print(f"[status] {path}: {'protected' if already_protected(html) else 'unprotected'}")
@@ -164,14 +182,18 @@ def process_file(path: str, mode: str, password: str | None) -> int:
 
     if mode == "enable":
         if password is None:
-            print(f"[{path}] password required to enable (--password or -p)", file=sys.stderr)
-            return 2
+            err("enable", path, "password required (--password or -p)")
+            return 1
         if already_protected(html):
             print(f"[enable] {path}: already protected (no changes)")
             return 0
         new_html = inject(html, password)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(new_html)
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(new_html)
+        except OSError as e:
+            err("write", path, str(e))
+            return 1
         print(f"[enable] {path}: protection injected")
         return 0
 
@@ -179,17 +201,21 @@ def process_file(path: str, mode: str, password: str | None) -> int:
         if not already_protected(html):
             print(f"[disable] {path}: no protection block found (no changes)")
             return 0
-        new_html = remove(html)
         if password is None or not verify_password(html, password):
-            print(f"[{path}] wrong password", file=sys.stderr)
-            return 3
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(new_html)
+            err("disable", path, "wrong password")
+            return 1
+        new_html = remove(html)
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(new_html)
+        except OSError as e:
+            err("write", path, str(e))
+            return 1
         print(f"[disable] {path}: protection removed")
         return 0
 
-    print(f"[error] unknown mode: {mode}")
-    return 2
+    err("cli", path, f"unknown mode: {mode}")
+    return 1
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -198,7 +224,11 @@ def main() -> None:
     parser.add_argument("--password", "-p")
     args = parser.parse_args()
 
-    exit_code = process_file(args.path, args.mode, args.password)
+    try:
+        exit_code = process_file(args.path, args.mode, args.password)
+    except Exception as e:
+        err("unexpected", args.path, str(e))
+        exit_code = 1
     sys.exit(exit_code)
 
 if __name__ == "__main__":
